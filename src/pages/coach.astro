@@ -1,0 +1,121 @@
+---
+import Base from '@/layouts/Base.astro';
+import CoachPicker from '@/components/CoachPicker';
+---
+
+<Base title="教练看板" active="coach">
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <div class="text-sm text-slate-600">
+      通过右侧选择教练，或使用固定链接分享：
+    </div>
+    <CoachPicker
+      client:only="react"
+      coaches={coaches}
+      value={coachId}
+      onChange={(v) => (location.href = '/coach?id=' + v)}
+    />
+  </div>
+
+  {coachId && !data && <p class="text-slate-500">加载失败或暂无数据。</p>}
+
+  {
+    data && (
+      <>
+        {data.latest && (
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="rounded-2xl border p-5 bg-white">
+              <div class="text-slate-500 text-sm">最新场次</div>
+              <div class="mt-1 text-2xl font-semibold">
+                第{data.latest.live_no}场
+              </div>
+            </div>
+            <div class="rounded-2xl border p-5 bg-white">
+              <div class="text-slate-500 text-sm">用户数</div>
+              <div class="mt-1 text-2xl font-semibold">
+                {data.latest.users.toLocaleString()}
+              </div>
+            </div>
+            <div class="rounded-2xl border p-5 bg-white">
+              <div class="text-slate-500 text-sm">当场成交</div>
+              <div class="mt-1 text-2xl font-semibold">
+                {data.latest.gmv_current.toLocaleString()}
+              </div>
+            </div>
+            <div class="rounded-2xl border p-5 bg-white">
+              <div class="text-slate-500 text-sm">成交用户数</div>
+              <div class="mt-1 text-2xl font-semibold">
+                {(data.latest.deal_users ?? 0).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <section class="mt-6">
+          <h2 class="text-lg font-semibold mb-2">分场趋势</h2>
+          <Chart
+            client:only="react"
+            option={{
+              tooltip: { trigger: 'axis' },
+              legend: { data: ['用户数', '当场成交', '历史成交'] },
+              xAxis: {
+                type: 'category',
+                data: data.sessions.map((s) => `第${s.live_no}场`),
+              },
+              yAxis: { type: 'value' },
+              series: [
+                {
+                  name: '用户数',
+                  type: 'line',
+                  data: data.sessions.map((s) => s.users),
+                },
+                {
+                  name: '当场成交',
+                  type: 'bar',
+                  data: data.sessions.map((s) => s.gmv_current),
+                },
+                {
+                  name: '历史成交',
+                  type: 'bar',
+                  data: data.sessions.map((s) => s.gmv_history),
+                },
+              ],
+            }}
+          />
+        </section>
+
+        <section class="mt-6">
+          <h2 class="text-lg font-semibold mb-2">用户分层占比</h2>
+          <Chart
+            client:only="react"
+            option={{
+              tooltip: { trigger: 'axis' },
+              legend: { data: ['未观看', '路过', '浅度', '深度', '核心'] },
+              xAxis: {
+                type: 'category',
+                data: data.sessions.map((s) => `第${s.live_no}场`),
+              },
+              yAxis: { type: 'value' },
+              series: ['none', 'passby', 'shallow', 'deep', 'core'].map(
+                (k, i) => ({
+                  name: ['未观看', '路过', '浅度', '深度', '核心'][i],
+                  type: 'bar',
+                  stack: 'buckets',
+                  emphasis: { focus: 'series' },
+                  data: data.sessions.map((s) => (s.buckets as any)[k]),
+                })
+              ),
+            }}
+          />
+        </section>
+      </>
+    )
+  }
+
+  {
+    !coachId && (
+      <p class="text-slate-500">
+        请先选择教练；也可以访问固定链接格式：<code>/coach?id=COACH_ID</code>
+      </p>
+    )
+  }
+</Base>

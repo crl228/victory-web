@@ -1,0 +1,203 @@
+---
+import Base from '@/layouts/Base.astro';
+import KpiCard from '@/components/KpiCard';
+import Chart from '@/components/Chart';
+import { api } from '@/lib/api';
+import type { Overview } from '@/lib/types';
+
+const data = (await api.bossOverview().catch(() => null)) as Overview | null;
+---
+
+<Base title="老板看板" active="boss">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <KpiCard
+      client:only="react"
+      label="观看人数（去重）"
+      value={data ? data.uv.toLocaleString() : '…'}
+      hint="累计到当前"
+    />
+    <KpiCard
+      client:only="react"
+      label="观看人次"
+      value={data ? data.pv.toLocaleString() : '…'}
+      hint="累计到当前"
+    />
+    <KpiCard
+      client:only="react"
+      label="直播成交总额"
+      value={data ? data.live_purchase_amount.toLocaleString() : '…'}
+    />
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+    <!-- 1. 直播观看人数：折线图 -->
+    <section>
+      <h2 class="text-lg font-semibold mb-2">直播观看人数</h2>
+      <Chart
+        client:only="react"
+        className="h-[320px] sm:h-[380px] md:h-[440px]"
+        option={{
+          tooltip: { trigger: 'axis' },
+          legend: { top: 0, data: ['观看人数'] },
+          grid: {
+            left: 12,
+            right: 16,
+            bottom: 40,
+            top: 32,
+            containLabel: true,
+          },
+          xAxis: {
+            type: 'category',
+            data: (data?.sessions || []).map((s) => `第${s.live_no}场`),
+          },
+          yAxis: { type: 'value' },
+          series: [
+            {
+              name: '观看人数',
+              type: 'line',
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.active_users),
+            },
+          ],
+        }}
+      />
+    </section>
+
+    <!-- 2. 成交转化漏斗：漏斗图 -->
+    <section>
+      <h2 class="text-lg font-semibold mb-2">成交转化漏斗</h2>
+      <Chart
+        client:only="react"
+        className="h-[320px] sm:h-[380px] md:h-[440px]"
+        option={{
+          tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+          legend: { top: 0 },
+          series: [
+            {
+              type: 'funnel',
+              left: '5%',
+              width: '90%',
+              top: 32,
+              bottom: 20,
+              sort: 'descending',
+              label: { show: true, position: 'inside' },
+              itemStyle: { borderWidth: 0 },
+              minSize: '15%',
+              data: data?.funnel || [],
+            },
+          ],
+        }}
+      />
+    </section>
+
+    <!-- 3. 用户参与情况分布：累积图（每场） -->
+    <section>
+      <h2 class="text-lg font-semibold mb-2">用户参与情况分布（每场）</h2>
+      <Chart
+        client:only="react"
+        className="h-[320px] sm:h-[380px] md:h-[440px]"
+        option={{
+          tooltip: { trigger: 'axis' },
+          legend: { top: 0, data: ['路过', '浅度', '深度', '核心'] },
+          grid: {
+            left: 12,
+            right: 16,
+            bottom: 40,
+            top: 32,
+            containLabel: true,
+          },
+          xAxis: {
+            type: 'category',
+            data: (data?.sessions || []).map((s) => `第${s.live_no}场`),
+          },
+          yAxis: { type: 'value' },
+          series: [
+            {
+              name: '路过(1–30s)',
+              type: 'line',
+              stack: 'engage',
+              areaStyle: {},
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.watch_bin_1),
+            },
+            {
+              name: '短暂兴趣(31–180s)',
+              type: 'line',
+              stack: 'engage',
+              areaStyle: {},
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.watch_bin_2),
+            },
+            {
+              name: '半参与(181–600s)',
+              type: 'line',
+              stack: 'engage',
+              areaStyle: {},
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.watch_bin_3),
+            },
+            {
+              name: '深度参与(601–1800s)',
+              type: 'line',
+              stack: 'engage',
+              areaStyle: {},
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.watch_bin_4),
+            },
+            {
+              name: '核心用户(>1800s)',
+              type: 'line',
+              stack: 'engage',
+              areaStyle: {},
+              smooth: true,
+              showSymbol: false,
+              data: (data?.sessions || []).map((s) => s.watch_bin_5),
+            },
+          ],
+        }}
+      />
+    </section>
+
+    <!-- 4. 用户观看分布：饼图（总的） -->
+    <section>
+      <h2 class="text-lg font-semibold mb-2">用户观看分布（总计）</h2>
+      <Chart
+        client:only="react"
+        className="h-[320px] sm:h-[380px] md:h-[440px]"
+        option={{
+          tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+          legend: { top: 0 },
+          series: [
+            {
+              type: 'pie',
+              radius: ['30%', '68%'],
+              center: ['50%', '55%'],
+              label: { formatter: '{b}{d}%' },
+              data: data
+                ? [
+                    { name: '未观看(0s)', value: data.watch_bin_0 },
+                    { name: '路过(1–30s)', value: data.watch_bin_1 },
+                    {
+                      name: '短暂兴趣(31–180s)',
+                      value: data.watch_bin_2,
+                    },
+                    { name: '半参与(181–600s)', value: data.watch_bin_3 },
+                    {
+                      name: '深度参与(601–1800s)',
+                      value: data.watch_bin_4,
+                    },
+                    { name: '核心用户(>1800s)', value: data.watch_bin_5 },
+                  ]
+                : [],
+            },
+          ],
+        }}
+      />
+    </section>
+  </div>
+</Base>

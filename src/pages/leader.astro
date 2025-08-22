@@ -1,0 +1,116 @@
+---
+import Base from '@/layouts/Base.astro';
+import Chart from '@/components/Chart';
+import KpiCard from '@/components/KpiCard';
+import { api } from '@/lib/api';
+import type { LeaderOverview } from '@/lib/types';
+import LeaderCoachTable from '@/components/LeaderCoachTable';
+
+const leaders = await api.listLeaders().catch(() => []);
+let id = Astro.url.searchParams.get('id') || leaders[0]?.reviewer;
+const urlSearchParams = new URLSearchParams(window.location.search);
+const params = Object.fromEntries(urlSearchParams.entries());
+id = params[0]
+const data = id
+  ? ((await api.leaderOverview(id).catch(() => null)) as LeaderOverview | null)
+  : null;
+
+// function sum<T>(arr: T[], pick: (t: any) => number) {
+//   return arr.reduce((a: any, b: any) => a + pick(b), 0);
+// }
+// const latest = data
+//   ? data.sessions.reduce(
+//       (max, s) => (s.live_no > max.live_no ? s : max),
+//       data.sessions[0]
+//     )
+//   : null;
+// const totalUsers = data ? sum(data.sessions, (s) => s.users) : 0;
+// const totalGmv = data ? sum(data.sessions, (s) => s.gmv_history) : 0;
+// const avgActive = data
+//   ? sum(data.sessions, (s) => s['active_rate'] || 0) /
+//     (data.sessions.length || 1)
+//   : 0;
+---
+<Base title="团长看板" active="leader">
+  <div class="flex items-center gap-3 mb-4">
+  <div class="text-sm text-slate-600">团长：</div>
+  <select class="border rounded-xl px-3 py-2 bg-white" onchange="location.href='/leader?id='+this.value">
+  {leaders.map(l => <option value={l.reviewer} selected={l.reviewer===id}>{l.reviewer}</option>)}
+  </select>
+  </div>
+  
+  
+  {data ? (
+  <>
+  <!-- A. 最近一场数据（单次） -->
+  <section class="mb-6">
+  <h2 class="text-lg font-semibold mb-2">最近一场数据</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+  {/* <KpiCard client:only="react" label="场次" value={latest?`第${latest.live_no}场`:'…'} />
+  <KpiCard client:only="react" label="观看人数" value={latest?latest.users.toLocaleString():'…'} />
+  <KpiCard client:only="react" label="当场成交" value={latest?latest.gmv_current.toLocaleString():'…'} />
+  <KpiCard client:only="react" label="历史累计成交" value={latest?latest.gmv_history.toLocaleString():'…'} /> */}
+  </div>
+  </section>
+  
+  
+  <!-- B. 团长总体统计（累计） -->
+  <section class="mb-6">
+  <h2 class="text-lg font-semibold mb-2">团长总体统计</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <KpiCard client:only="react" label="累计观看人数" value={data.total_users.toLocaleString()} />
+  <KpiCard client:only="react" label="累计活跃人数" value={data.active_users.toLocaleString()} />
+  <KpiCard client:only="react" label="累计成交人数" value={data.deal_users.toLocaleString()} />
+  {/* <KpiCard client:only="react" label="累计成交人数" value={`${(avgActive*100).toFixed(1)}%`} /> */}
+  </div>
+  </section>
+  
+  
+  <!-- C. 教练概览（该团长管理的教练） -->
+  <section class="mb-6">
+  <h2 class="text-lg font-semibold mb-2">教练概览</h2>
+  <LeaderCoachTable client:only="react" leaderId={id} />
+  </section>
+  
+  
+  <!-- D. 分场趋势（人数/GMV） -->
+  {/* <section class="mt-6">
+  <h3 class="text-lg font-semibold mb-2">分场趋势</h3>
+  <Chart client:only="react" className="h-[320px] sm:h-[380px] md:h-[440px]" option={{
+  tooltip: { trigger: 'axis' },
+  legend: { top: 0, data: ['用户数','当场成交','历史成交'] },
+  grid: { left: 12, right: 16, bottom: 40, top: 32, containLabel: true },
+  toolbox: { right: 10, feature: { saveAsImage: {}, dataZoom: { yAxisIndex: 'none' } } },
+  dataZoom: data.sessions.length > 12 ? [{ type:'slider', start: 100- (12/data.sessions.length)*100, end: 100 }] : [],
+  xAxis: { type: 'category', data: data.sessions.map(s=>`第${s.live_no}场`) },
+  yAxis: { type: 'value' },
+  series: [
+  { name: '用户数', type: 'line', smooth: true, showSymbol: false, data: data.sessions.map(s=>s.users) },
+  { name: '当场成交', type: 'bar', barMaxWidth: 18, data: data.sessions.map(s=>s.gmv_current) },
+  { name: '历史成交', type: 'bar', barMaxWidth: 18, data: data.sessions.map(s=>s.gmv_history) },
+  ],
+  }} />
+  </section> */}
+  <!-- E. 用户分层占比（每场堆叠） -->
+{/* <section class="mt-6">
+<h3 class="text-lg font-semibold mb-2">用户分层占比</h3>
+<Chart client:only="react" className="h-[320px] sm:h-[380px] md:h-[440px]" option={{
+tooltip: { trigger: 'axis' },
+legend: { top: 0, data: ['未观看','路过','浅度','深度','核心'] },
+grid: { left: 12, right: 16, bottom: 40, top: 32, containLabel: true },
+toolbox: { right: 10, feature: { saveAsImage: {}, dataZoom: { yAxisIndex: 'none' } } },
+dataZoom: data.sessions.length > 12 ? [{ type:'slider', start: 100- (12/data.sessions.length)*100, end: 100 }] : [],
+xAxis: { type: 'category', data: data.sessions.map(s=>`第${s.live_no}场`) },
+yAxis: { type: 'value' },
+series: ['none','passby','shallow','deep','core'].map((k, i)=>({
+name: ['未观看','路过','浅度','深度','核心'][i],
+type: 'bar', stack: 'buckets', barMaxWidth: 18,
+emphasis: { focus: 'series' },
+data: data.sessions.map(s => (s.buckets as any)[k])
+}))
+}} />
+</section> */}
+</>
+) : (<p class="text-slate-500">暂无数据</p>)
+}
+</Base> 

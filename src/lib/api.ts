@@ -1,6 +1,7 @@
 import { ApiEnvelope, Leader, Coach } from '@/lib/types';
 
-const API_BASE = 'https://victory-api.easycharge.fun';
+// const API_BASE = 'https://victory-api.easycharge.fun';
+const API_BASE = 'http://localhost:9911';
 const USE_MOCK = true;
 
 // async function json<T>(path: string, init?: RequestInit): Promise<T> {
@@ -44,6 +45,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   bossOverview: () => json('/overview'),
+  dealUsers: () => json('/deal/users'),
   leaderOverview: (reviewer?: string) =>
     json(
       `/leader/overview${

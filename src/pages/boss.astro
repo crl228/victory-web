@@ -2,6 +2,7 @@
 import Base from '@/layouts/Base.astro';
 import KpiCard from '@/components/KpiCard';
 import Chart from '@/components/Chart';
+import BossOrdersTable from '@/components/BossOrdersTable';
 import { api } from '@/lib/api';
 import type { Overview } from '@/lib/types';
 
@@ -64,6 +65,90 @@ const data = (await api.bossOverview().catch(() => null)) as Overview | null;
       />
     </section>
 
+    <!-- 1.2 直播成交额 / 成交人数：折线双线图 -->
+    <section class="mb-4">
+      <h2 class="text-lg font-semibold mb-2">直播成交额 | 成交人数</h2>
+      {
+        (() => {
+          const sessions = (data?.sessions || []) as any[];
+          const xs = sessions.map((s) => `第${s.live_no}场`);
+          const amounts = sessions.map((s) => Number(s.total_deals || 0));
+          const buyersPerSession = sessions.map((s) =>
+            Number(s.deal_users || 0)
+          );
+          const buyersMax = buyersPerSession.length
+            ? Math.max(...buyersPerSession)
+            : 0;
+          const y2Max = Math.max(5, Math.ceil(buyersMax * 1.2));
+          // const funnel = (data?.funnel || []) as any[];
+          // const visit = Number(funnel[0]?.value ?? 0);
+          // const buyers = Number(funnel[funnel.length - 1]?.value ?? 0);
+          // const rate = visit > 0 ? buyers / visit : 0;
+          // const buyersPerSession = sessions.map((s) => {
+          //   const v = Number(s.deal_users);
+          //   return v;
+          //   if (Number.isFinite(v)) return v;
+          //   // return Math.round(Number(s.users || 0) * rate);
+          // });
+          return (
+            <Chart
+              client:only="react"
+              className="h-[320px] sm:h-[380px] md:h-[440px]"
+              option={{
+                tooltip: { trigger: 'axis' },
+                legend: { top: 0, data: ['成交额', '成交人数'] },
+                grid: {
+                  left: 12,
+                  right: 16,
+                  bottom: 40,
+                  top: 32,
+                  containLabel: true,
+                },
+                dataZoom:
+                  sessions.length > 12
+                    ? [
+                        {
+                          type: 'slider',
+                          start: 100 - (12 / sessions.length) * 100,
+                          end: 100,
+                        },
+                      ]
+                    : [],
+                xAxis: { type: 'category', data: xs },
+                yAxis: [
+                  { type: 'value', name: '成交额' },
+                  {
+                    type: 'value',
+                    name: '成交人数',
+                    min: 0,
+                    max: y2Max,
+                    minInterval: 1,
+                  },
+                ],
+                series: [
+                  {
+                    name: '成交额',
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: amounts,
+                  },
+                  {
+                    name: '成交人数',
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: buyersPerSession,
+                    yAxisIndex: 1,
+                  },
+                ],
+              }}
+            />
+          );
+        })()
+      }
+    </section>
+
     <!-- 2. 成交转化漏斗：漏斗图 -->
     <section>
       <h2 class="text-lg font-semibold mb-2">成交转化漏斗</h2>
@@ -99,7 +184,16 @@ const data = (await api.bossOverview().catch(() => null)) as Overview | null;
         className="h-[320px] sm:h-[380px] md:h-[440px]"
         option={{
           tooltip: { trigger: 'axis' },
-          legend: { top: 0, data: ['路过', '浅度', '深度', '核心'] },
+          legend: {
+            top: 0,
+            data: [
+              '路过(1–30s)',
+              '短暂兴趣(31–180s)',
+              '半参与(181–600s)',
+              '深度参与(601–1800s)',
+              '核心用户(>1800s)',
+            ],
+          },
           grid: {
             left: 12,
             right: 16,
@@ -198,6 +292,11 @@ const data = (await api.bossOverview().catch(() => null)) as Overview | null;
           ],
         }}
       />
+    </section>
+
+    <section class="col-span-1 md:col-span-2">
+      <h2 class="text-lg font-semibold mb-2">每场成交明细</h2>
+      <BossOrdersTable client:only="react" />
     </section>
   </div>
 </Base>

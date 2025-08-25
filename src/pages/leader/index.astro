@@ -1,0 +1,30 @@
+---
+import Base from '@/layouts/Base.astro';
+import { api } from '@/lib/api';
+import type { Leader } from '@/lib/types';
+
+const leaders = await api.listLeaders().catch(() => [] as Leader[]);
+const first = String(leaders[0]?.reviewer);
+const target = first ? `/leader/${encodeURIComponent(first)}` : '';
+---
+
+<Base title="团长入口" active="leader">
+  {
+    target ? (
+      <>
+        <p class="text-slate-600">
+          正在前往默认团长… 如果没有自动跳转，
+          <a class="text-blue-600 underline" href={target}>
+            点击这里
+          </a>
+          。
+        </p>
+        <script is:inline define:vars={{ target }}>
+          if (target) location.replace(target);
+        </script>
+      </>
+    ) : (
+      <p class="text-slate-500">暂无团长数据</p>
+    )
+  }
+</Base>

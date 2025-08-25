@@ -1,6 +1,6 @@
-import { ApiEnvelope } from '@/lib/types';
+import { ApiEnvelope, Leader, Coach } from '@/lib/types';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'https://victory-api.easycharge.fun';
 const USE_MOCK = true;
 
 // async function json<T>(path: string, init?: RequestInit): Promise<T> {
@@ -50,14 +50,21 @@ export const api = {
         reviewer ? `?reviewer=${encodeURIComponent(reviewer)}` : ''
       }`
     ),
-  coachOverview: (coachId?: string) =>
+  coachOverview: (coach?: string) =>
     json(
-      `/coach/overview${coachId ? `?id=${encodeURIComponent(coachId)}` : ''}`
+      `/coach/overview${coach ? `?coach=${encodeURIComponent(coach)}` : ''}`
     ),
-  listLeaders: () => json('/leaders'),
-  listCoaches: (leaderId?: string) =>
+  coachSessions: (coach?: string) =>
     json(
-      `/coaches${leaderId ? `?leaderId=${encodeURIComponent(leaderId)}` : ''}`
+      `/coach/sessions${coach ? `?coach=${encodeURIComponent(coach)}` : ''}`
+    ),
+  listLeaders: () => json<Leader[]>('/leaders'),
+  listCoaches: () => json<Coach[]>('/coaches'),
+  listCoachesByLeader: (reviewer?: string) =>
+    json(
+      `/leader/coaches${
+        reviewer ? `?reviewer=${encodeURIComponent(reviewer)}` : ''
+      }`
     ),
 };
 

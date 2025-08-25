@@ -1,0 +1,30 @@
+---
+import Base from '@/layouts/Base.astro';
+import { api } from '@/lib/api';
+import type { Coach, CoachListItem } from '@/lib/types';
+
+const coaches = await api.listCoaches().catch(() => [] as Coach[]);
+const first = String(coaches[0]?.coach);
+const target = first ? `/coach/${encodeURIComponent(first)}` : '';
+---
+
+<Base title="教练入口" active="coach">
+  {
+    target ? (
+      <>
+        <p class="text-slate-600">
+          正在前往默认教练… 如果没有自动跳转，
+          <a class="text-blue-600 underline" href={target}>
+            点击这里
+          </a>
+          。
+        </p>
+        <script is:inline define:vars={{ target }}>
+          if (target) location.replace(target);
+        </script>
+      </>
+    ) : (
+      <p class="text-slate-500">暂无教练数据</p>
+    )
+  }
+</Base>

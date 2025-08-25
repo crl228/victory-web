@@ -4,6 +4,14 @@ export type ApiEnvelope<T> = {
   data?: T; // 推荐：所有有效载荷都放 data
 };
 
+export type Leader = {
+  reviewer: string;
+};
+
+export type Coach = {
+  coach: string;
+};
+
 export type Overview = {
   pv: number; // 历史累计成交额使用 GMV 字段；此字段保留历史定义
   uv: number; // 平均活跃率（可选展示）
@@ -31,31 +39,57 @@ export type Overview = {
   }>;
 };
 
+export type CoachListItem = {};
+
 export type LeaderOverview = {
-  leader_id: string;
-  leader_name: string;
+  total_users: number;
+  active_users: number;
+  deal_users: number;
+  total_deals: number;
+  watch_bin_0: number;
+  watch_bin_1: number;
+  watch_bin_2: number;
+  watch_bin_3: number;
+  watch_bin_4: number;
+  watch_bin_5: number;
   sessions: Array<{
     live_no: number;
-    users: number;
-    gmv_current: number;
-    gmv_history: number;
+    total_users: number;
+    active_users: number;
+    deal_users: number;
+    total_deals: number;
+    watch_bin_0: number;
+    watch_bin_1: number;
+    watch_bin_2: number;
+    watch_bin_3: number;
+    watch_bin_4: number;
+    watch_bin_5: number;
   }>;
 };
 
 export type CoachOverview = {
-  coach_id: string;
-  coach_name: string;
-  latest?: {
-    live_no: number;
-    users: number;
-    gmv_current: number;
-    gmv_history: number;
-    deal_users?: number;
-  };
+  total_users: number;
+  active_users: number;
+  deal_users: number;
+  total_deals: number;
+  watch_bin_0: number;
+  watch_bin_1: number;
+  watch_bin_2: number;
+  watch_bin_3: number;
+  watch_bin_4: number;
+  watch_bin_5: number;
+  detail: any;
   sessions: Array<{
     live_no: number;
-    users: number;
-    gmv_current: number;
-    gmv_history: number;
+    total_users: number;
+    active_users: number;
+    deal_users: number;
+    total_deals: number;
+    watch_bin_0: number;
+    watch_bin_1: number;
+    watch_bin_2: number;
+    watch_bin_3: number;
+    watch_bin_4: number;
+    watch_bin_5: number;
   }>;
 };

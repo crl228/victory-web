@@ -3,40 +3,44 @@ import Base from '@/layouts/Base.astro';
 import Chart from '@/components/Chart';
 import KpiCard from '@/components/KpiCard';
 import { api } from '@/lib/api';
-import type { LeaderOverview } from '@/lib/types';
+import type { Leader, LeaderOverview } from '@/lib/types';
 import LeaderCoachTable from '@/components/LeaderCoachTable';
 
-const leaders = await api.listLeaders().catch(() => []);
-let id = Astro.url.searchParams.get('id') || leaders[0]?.reviewer;
-const urlSearchParams = new URLSearchParams(window.location.search);
-const params = Object.fromEntries(urlSearchParams.entries());
-id = params[0]
-const data = id
-  ? ((await api.leaderOverview(id).catch(() => null)) as LeaderOverview | null)
-  : null;
+export async function getStaticPaths() {
+  const leaders = await api.listLeaders().catch(() => [] as Leader[]);
+  return leaders.map((l) => ({ params: { reviewer: String(l.reviewer) } }));
+}
 
-// function sum<T>(arr: T[], pick: (t: any) => number) {
-//   return arr.reduce((a: any, b: any) => a + pick(b), 0);
-// }
-// const latest = data
-//   ? data.sessions.reduce(
-//       (max, s) => (s.live_no > max.live_no ? s : max),
-//       data.sessions[0]
-//     )
-//   : null;
-// const totalUsers = data ? sum(data.sessions, (s) => s.users) : 0;
-// const totalGmv = data ? sum(data.sessions, (s) => s.gmv_history) : 0;
-// const avgActive = data
-//   ? sum(data.sessions, (s) => s['active_rate'] || 0) /
-//     (data.sessions.length || 1)
-//   : 0;
+const { reviewer } = Astro.params;
+const leaders = await api.listLeaders().catch(() => [] as Leader[]);
+const data = await api.leaderOverview(String(reviewer)).catch(() => null) as LeaderOverview | null; 
+
+
+function sum<T>(arr: T[], pick: (t: any)=>number){ return arr.reduce((a:any,b:any)=>a+pick(b),0); }
+const totalUsers = data ? sum(data, (s:any)=>s.total_users) : 0;
+const active_users = data ? sum(data, (s:any)=>s.active_users) : 0;
+const deal_users = data ? sum(data, (s:any)=>s.deal_users) : 0;
+const watch_bin_0 = data ? sum(data, (s:any)=>s.watch_bin_0) : 0;
+const watch_bin_1 = data ? sum(data, (s:any)=>s.watch_bin_1) : 0;
+const watch_bin_2 = data ? sum(data, (s:any)=>s.watch_bin_2) : 0;
+const watch_bin_3 = data ? sum(data, (s:any)=>s.watch_bin_3) : 0;
+const watch_bin_4 = data ? sum(data, (s:any)=>s.watch_bin_4) : 0;
+const watch_bin_5 = data ? sum(data, (s:any)=>s.watch_bin_5) : 0;
+
 ---
 <Base title="团长看板" active="leader">
   <div class="flex items-center gap-3 mb-4">
   <div class="text-sm text-slate-600">团长：</div>
-  <select class="border rounded-xl px-3 py-2 bg-white" onchange="location.href='/leader?id='+this.value">
-  {leaders.map(l => <option value={l.reviewer} selected={l.reviewer===id}>{l.reviewer}</option>)}
-  </select>
+<select
+class="border rounded-xl px-3 py-2 bg-white"
+onchange="location.href='/leader/'+encodeURIComponent(this.value)"
+>
+{leaders.map((l:any) => {
+const value = String(l.reviewer ?? l.name ?? l.id ?? '');
+const label = String(l.reviewer ?? l.name ?? l.reviewer ?? value);
+return <option value={value} selected={value === String(reviewer)}>{label}</option>;
+})}
+</select>
   </div>
   
   
@@ -44,34 +48,69 @@ const data = id
   <>
   <!-- A. 最近一场数据（单次） -->
   <section class="mb-6">
-  <h2 class="text-lg font-semibold mb-2">最近一场数据</h2>
-  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+  {/* <h2 class="text-lg font-semibold mb-2">最近一场数据</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4"> */}
   {/* <KpiCard client:only="react" label="场次" value={latest?`第${latest.live_no}场`:'…'} />
   <KpiCard client:only="react" label="观看人数" value={latest?latest.users.toLocaleString():'…'} />
   <KpiCard client:only="react" label="当场成交" value={latest?latest.gmv_current.toLocaleString():'…'} />
   <KpiCard client:only="react" label="历史累计成交" value={latest?latest.gmv_history.toLocaleString():'…'} /> */}
   </div>
   </section>
-  
+
   
   <!-- B. 团长总体统计（累计） -->
   <section class="mb-6">
   <h2 class="text-lg font-semibold mb-2">团长总体统计</h2>
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-  <KpiCard client:only="react" label="累计观看人数" value={data.total_users.toLocaleString()} />
-  <KpiCard client:only="react" label="累计活跃人数" value={data.active_users.toLocaleString()} />
-  <KpiCard client:only="react" label="累计成交人数" value={data.deal_users.toLocaleString()} />
+  <KpiCard client:only="react" label="累计观看人数" value={totalUsers.toLocaleString()} />
+  <KpiCard client:only="react" label="累计活跃人数" value={active_users.toLocaleString()} />
+  <KpiCard client:only="react" label="累计成交人数" value={deal_users.toLocaleString()} />
   {/* <KpiCard client:only="react" label="累计成交人数" value={`${(avgActive*100).toFixed(1)}%`} /> */}
   </div>
   </section>
-  
+
+  <section>
+      <h2 class="text-lg font-semibold mb-2">用户观看分布（总计）</h2>
+      <Chart
+        client:only="react"
+        className="h-[320px] sm:h-[380px] md:h-[440px]"
+        option={{
+          tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+          legend: { top: 0 },
+          series: [
+            {
+              type: 'pie',
+              radius: ['30%', '68%'],
+              center: ['50%', '55%'],
+              label: { formatter: '{b}{d}%' },
+              data: data
+                ? [
+                    { name: '未观看(0s)', value: watch_bin_0 },
+                    { name: '路过(1–30s)', value: watch_bin_1 },
+                    {
+                      name: '短暂兴趣(31–180s)',
+                      value: watch_bin_2,
+                    },
+                    { name: '半参与(181–600s)', value: watch_bin_3 },
+                    {
+                      name: '深度参与(601–1800s)',
+                      value: watch_bin_4,
+                    },
+                    { name: '核心用户(>1800s)', value: watch_bin_5 },
+                  ]
+                : [],
+            },
+          ],
+        }}
+      />
+    </section>
+
   
   <!-- C. 教练概览（该团长管理的教练） -->
-  <section class="mb-6">
-  <h2 class="text-lg font-semibold mb-2">教练概览</h2>
-  <LeaderCoachTable client:only="react" leaderId={id} />
-  </section>
-  
+<section class="mb-6">
+<h2 class="text-lg font-semibold mb-2">教练概览</h2>
+<LeaderCoachTable client:only="react" leaderReviewer={String(reviewer)} />
+</section>
   
   <!-- D. 分场趋势（人数/GMV） -->
   {/* <section class="mt-6">

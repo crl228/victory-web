@@ -1,0 +1,152 @@
+---
+import Base from '@/layouts/Base.astro';
+import Chart from '@/components/Chart';
+import KpiCard from '@/components/KpiCard';
+// import SessionDetailTable from '@/components/SessionDetailTable';
+import CoachUserTable from '@/components/CoachUserTable'
+import { api } from '@/lib/api';
+import type { Coach, CoachOverview } from '@/lib/types';
+
+
+
+export async function getStaticPaths() {
+  const coaches = await api.listCoaches().catch(() => [] as Coach[]);
+  return coaches.map((l) => ({ params: { coach: String(l.coach) } }));
+}
+
+const { coach } = Astro.params;
+// const {reviewer} = "123"
+const coaches = await api.listCoaches().catch(() => [] as Coach[]);
+const data = await api.coachOverview(String(coach)).catch(() => null) as CoachOverview | null; 
+
+// 计算 KPI
+// function sum<T>(arr: T[], pick: (t: any)=>number){ return arr.reduce((a:any,b:any)=>a+pick(b),0); }
+const latest = data?.sessions?.slice(-1)[0];
+
+---
+
+<Base title="教练看板" active="coach">
+<div class="flex items-center gap-3 mb-4">
+<div class="text-sm text-slate-600">教练：</div>
+<select
+class="border rounded-xl px-3 py-2 bg-white"
+onchange="location.href='/coach/'+encodeURIComponent(this.value)"
+>
+{coaches.map((l:any) => {
+const value = String(l.coach ?? l.name ?? l.id ?? '');
+const label = String(l.coach ?? l.name ?? l.reviewer ?? value);
+return <option value={value} selected={value === String(coach)}>{label}</option>;
+})}
+</select>
+</div>
+
+
+{data ? (
+<>
+<!-- A. 最近一场（单次数据） -->
+<section class="mb-6">
+<h2 class="text-lg font-semibold mb-2">最近一场数据</h2>
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+<KpiCard client:only="react" label="场次" value={latest?`第${latest.live_no}场`:'…'} />
+<KpiCard client:only="react" label="观看人数" value={latest?.total_users.toLocaleString()} />
+<KpiCard client:only="react" label="核心人数" value={latest?.watch_bin_5.toLocaleString()} />
+<KpiCard client:only="react" label="当场成交人数" value={latest?.total_deals.toLocaleString()} />
+<!-- D. 观看分箱（总计）饼图 -->
+<section class="mt-6">
+<h3 class="text-lg font-semibold mb-2">最近一场观看情况</h3>
+{
+(()=>{
+const pie = [
+  { name:'未观看(0s)', value: latest?.watch_bin_0 },
+  { name:'路过(1–30s)', value: latest?.watch_bin_1 },
+{ name:'短暂兴趣(31–180s)', value: latest?.watch_bin_2 },
+{ name:'半参与(181–600s)', value: latest?.watch_bin_3 },
+{ name:'深度参与(601–1800s)', value: latest?.watch_bin_4 },
+{ name:'核心用户(>1800s)', value: latest?.watch_bin_5 },
+];
+return (
+<Chart client:only="react" className="h-[320px] sm:h-[380px] md:h-[440px]" option={{
+tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' }, legend: { top: 0 },
+series: [{ type:'pie', radius:['30%','68%'], center:['50%','55%'], label: { formatter:'{b}{d}%' }, data: pie }],
+}} />
+);
+})()
+}
+</section>
+<section class="mb-6">
+<CoachUserTable client:only="react" details={data?.details} />
+</section>
+
+</div>
+</section>
+<!-- B. 教练总体（累计） -->
+<section class="mb-6">
+<h2 class="text-lg font-semibold mb-2">总体统计</h2>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<KpiCard client:only="react" label="累计观看人数" value={data?.total_users?.toLocaleString()} />
+<KpiCard client:only="react" label="累计成交总额" value={data?.total_deals?.toLocaleString()} />
+<KpiCard client:only="react" label="核心用户（总计）" value={data?.watch_bin_5?.toLocaleString()} />
+</div>
+</section>
+
+<!-- C. 分场折线（累计 / 观看 / 核心） -->
+<section class="mt-6">
+<h3 class="text-lg font-semibold mb-2">分场折线（累计 / 观看 / 核心）</h3>
+{
+(()=>{
+const sessions = data.sessions as any[];
+const xs = sessions.map((s:any)=>`第${s.live_no}场`);
+const watchers = sessions.map((s:any)=>Number(s?.active_users ?? 0));
+const coreUsers = sessions.map((s:any)=>Number(s?.watch_bin_5 ?? 0));
+const cumulative = sessions.map((s:any)=>Number(s?.total_users ?? 0));
+return (
+<Chart client:only="react" className="h-[320px] sm:h-[380px] md:h-[440px]" option={{
+tooltip: { trigger: 'axis' },
+legend: { top: 0, data: ['总人数（累计）','观看人数','核心用户数'] },
+grid: { left: 12, right: 16, bottom: 40, top: 32, containLabel: true },
+dataZoom: sessions.length > 12 ? [{ type:'slider', start: 100- (12/sessions.length)*100, end: 100 }] : [],
+xAxis: { type: 'category', data: xs },
+yAxis: { type: 'value' },
+series: [
+{ name:'总人数（累计）', type:'line', smooth:true, showSymbol:false, data: cumulative },
+{ name:'观看人数', type:'line', smooth:true, showSymbol:false, data: watchers },
+{ name:'核心用户数', type:'line', smooth:true, showSymbol:false, data: coreUsers },
+],
+}} />
+);
+})()
+}
+<section class="mt-6">
+<h3 class="text-lg font-semibold mb-2">总体观看情况</h3>
+{
+(()=>{
+const pie = [
+  { name:'未观看(0s)', value: data.watch_bin_0 },
+  { name:'路过(1–30s)', value: data.watch_bin_1 },
+{ name:'短暂兴趣(31–180s)', value: data.watch_bin_2 },
+{ name:'半参与(181–600s)', value: data.watch_bin_3 },
+{ name:'深度参与(601–1800s)', value: data.watch_bin_4 },
+{ name:'核心用户(>1800s)', value: data.watch_bin_5 },
+];
+return (
+<Chart client:only="react" className="h-[320px] sm:h-[380px] md:h-[440px]" option={{
+tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' }, legend: { top: 0 },
+series: [{ type:'pie', radius:['30%','68%'], center:['50%','55%'], label: { formatter:'{b}{d}%' }, data: pie }],
+}} />
+);
+})()
+}
+</section>
+</section>
+
+
+<!-- E. 场次明细（环比 & 深核占比） -->
+{/* <section class="mt-6">
+<h3 class="text-lg font-semibold mb-2">场次明细</h3>
+<SessionDetailTable client:only="react" sessions={data.sessions as any} />
+</section> */}
+</>
+) : (
+<p class="text-slate-500">暂无数据</p>
+)}
+</Base>

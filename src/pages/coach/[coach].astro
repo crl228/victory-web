@@ -17,6 +17,7 @@ export async function getStaticPaths() {
 const { coach } = Astro.params;
 // const {reviewer} = "123"
 const coaches = await api.listCoaches().catch(() => [] as Coach[]);
+const groups: any = await api.coachLiveNos(coach);
 const data = await api.coachOverview(String(coach)).catch(() => null) as CoachOverview | null; 
 
 // 计算 KPI
@@ -38,6 +39,23 @@ const label = String(l.coach ?? l.name ?? l.reviewer ?? value);
 return <option value={value} selected={value === String(coach)}>{label}</option>;
 })}
 </select>
+<div class="text-sm text-slate-600 ml-4">场次：</div>
+  {
+    (() => {
+
+      return (
+      <select
+      class="border rounded-xl px-3 py-2 bg-white"
+      onchange={`location.href='/coach/${encodeURIComponent(String(coach))}/'+this.value`}
+    >
+      <option value="" selected disabled>选择场次</option>
+      {groups.map((_: any, i: number) => (
+        <option value={String(_.live_no)}>第{_.live_no}场</option>
+      ))}
+    </select>
+      );
+    })()
+  }
 </div>
 
 
@@ -53,7 +71,7 @@ return <option value={value} selected={value === String(coach)}>{label}</option>
 <KpiCard client:only="react" label="当场成交人数" value={latest?.total_deals.toLocaleString()} />
 <!-- D. 观看分箱（总计）饼图 -->
 <section class="mt-6">
-<h3 class="text-lg font-semibold mb-2">最近一场观看情况</h3>
+<h3 class="text-lg font-semibold mb-4">最近一场观看情况</h3>
 {
 (()=>{
 const pie = [
@@ -73,7 +91,7 @@ series: [{ type:'pie', radius:['30%','68%'], center:['50%','55%'], label: { form
 })()
 }
 </section>
-<section class="mb-6">
+<section class="mt-6 mb-6">
 <CoachUserTable client:only="react" details={data?.details} />
 </section>
 

@@ -14,10 +14,12 @@ export async function getStaticPaths() {
 const { reviewer } = Astro.params;
 const leaders = await api.listLeaders().catch(() => [] as Leader[]);
 const data = await api.leaderOverview(String(reviewer)).catch(() => null) as LeaderOverview | null; 
+const ov = await api.leaderLiveNos(reviewer).catch(() => null) as Array<any> || [];
 
 
 function sum<T>(arr: T[], pick: (t: any)=>number){ return arr.reduce((a:any,b:any)=>a+pick(b),0); }
 const totalUsers = data ? sum(data, (s:any)=>s.total_users) : 0;
+const total_amount = data? sum(data,  (s:any)=>s.total_deals) : 0;
 const active_users = data ? sum(data, (s:any)=>s.active_users) : 0;
 const deal_users = data ? sum(data, (s:any)=>s.deal_users) : 0;
 const watch_bin_0 = data ? sum(data, (s:any)=>s.watch_bin_0) : 0;
@@ -41,6 +43,23 @@ const label = String(l.reviewer ?? l.name ?? l.reviewer ?? value);
 return <option value={value} selected={value === String(reviewer)}>{label}</option>;
 })}
 </select>
+<div class="text-sm text-slate-600 ml-4">场次：</div>
+  {
+    (() => {
+      // 兼容两种后端字段：sessions / live_list
+      return (
+      <select
+      class="border rounded-xl px-3 py-2 bg-white"
+      onchange={`location.href='/leader/${encodeURIComponent(String(reviewer))}/'+this.value`}
+    >
+      <option value="" selected disabled>选择场次</option>
+      {ov.map((_: any, i: number) => (
+        <option value={String(_.live_no)}>第{_.live_no}场</option>
+      ))}
+    </select>
+      );
+    })()
+  }
   </div>
   
   
@@ -65,7 +84,7 @@ return <option value={value} selected={value === String(reviewer)}>{label}</opti
   <KpiCard client:only="react" label="累计观看人数" value={totalUsers.toLocaleString()} />
   <KpiCard client:only="react" label="累计活跃人数" value={active_users.toLocaleString()} />
   <KpiCard client:only="react" label="累计成交人数" value={deal_users.toLocaleString()} />
-  {/* <KpiCard client:only="react" label="累计成交人数" value={`${(avgActive*100).toFixed(1)}%`} /> */}
+  <KpiCard client:only="react" label="累计成交额" value={total_amount.toLocaleString()} />
   </div>
   </section>
 
@@ -111,7 +130,12 @@ return <option value={value} selected={value === String(reviewer)}>{label}</opti
 <h2 class="text-lg font-semibold mb-2">教练概览</h2>
 <LeaderCoachTable client:only="react" leaderReviewer={String(reviewer)} />
 </section>
-  
+
+{/* <section class="mb-6">
+  <h2 class="text-lg font-semibold mb-2">按教练 · 每场</h2>
+  <LeaderCoachSessions client:only="react" leaderReviewer={String(reviewer)} />
+</section>
+   */}
   <!-- D. 分场趋势（人数/GMV） -->
   {/* <section class="mt-6">
   <h3 class="text-lg font-semibold mb-2">分场趋势</h3>

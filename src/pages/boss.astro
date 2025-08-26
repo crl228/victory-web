@@ -9,7 +9,7 @@ import type { Overview } from '@/lib/types';
 const data = (await api.bossOverview().catch(() => null)) as Overview | null;
 ---
 
-<Base title="老板看板" active="boss">
+<Base title="总览" active="boss">
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <KpiCard
       client:only="react"
@@ -80,16 +80,6 @@ const data = (await api.bossOverview().catch(() => null)) as Overview | null;
             ? Math.max(...buyersPerSession)
             : 0;
           const y2Max = Math.max(5, Math.ceil(buyersMax * 1.2));
-          // const funnel = (data?.funnel || []) as any[];
-          // const visit = Number(funnel[0]?.value ?? 0);
-          // const buyers = Number(funnel[funnel.length - 1]?.value ?? 0);
-          // const rate = visit > 0 ? buyers / visit : 0;
-          // const buyersPerSession = sessions.map((s) => {
-          //   const v = Number(s.deal_users);
-          //   return v;
-          //   if (Number.isFinite(v)) return v;
-          //   // return Math.round(Number(s.users || 0) * rate);
-          // });
           return (
             <Chart
               client:only="react"

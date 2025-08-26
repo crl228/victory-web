@@ -4,7 +4,7 @@ export default function RoleNav() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <a href="/boss" className="rounded-2xl border p-6 hover:shadow">
-        <div className="text-lg font-semibold">老板管理层</div>
+        <div className="text-lg font-semibold">总览</div>
         <p className="text-sm text-slate-600 mt-1">
           全局指标、分场走势、用户分层
         </p>

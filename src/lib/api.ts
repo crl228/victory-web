@@ -62,6 +62,20 @@ export const api = {
     ),
   listLeaders: () => json<Leader[]>('/leaders'),
   listCoaches: () => json<Coach[]>('/coaches'),
+  leaderLiveNos: (reviewer?: string) =>
+    json(
+      `/leader/lives${
+        reviewer ? `?reviewer=${encodeURIComponent(reviewer)}` : ''
+      }`
+    ),
+  coachLiveNos: (coach?: string) =>
+    json(`/coach/lives${coach ? `?coach=${encodeURIComponent(coach)}` : ''}`),
+  coachUsers: (coach: string, live_no: number) =>
+    json(
+      `/coach/users${
+        coach ? `?coach=${encodeURIComponent(coach)}` : ''
+      }&live_no=${live_no}`
+    ),
   listCoachesByLeader: (reviewer?: string) =>
     json(
       `/leader/coaches${

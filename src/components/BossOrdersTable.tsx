@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import type { Order } from '@/lib/types';
 
 export default function BossOrdersTable() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [rows, setRows] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +14,7 @@ export default function BossOrdersTable() {
     (async () => {
       try {
         const list = await api.dealUsers();
-        if (alive) setOrders(Array.isArray(list) ? list : []);
+        if (alive) setRows(Array.isArray(list) ? list : []);
       } catch (e: any) {
         if (alive) setError(e?.message || '加载失败');
       } finally {
@@ -28,10 +28,10 @@ export default function BossOrdersTable() {
 
   const totals = useMemo(
     () => ({
-      count: orders.length,
-      amount: orders.reduce((a, b) => a + (Number(b.live_deal_amount) || 0), 0),
+      count: rows.length,
+      amount: rows.reduce((a, b) => a + (Number(b.live_deal_amount) || 0), 0),
     }),
-    [orders]
+    [rows]
   );
 
   return (
@@ -44,61 +44,87 @@ export default function BossOrdersTable() {
           合计金额：{totals.amount.toLocaleString()} 元
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-[10px]">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">场次</th>
-              <th className="px-3 py-2 text-left font-medium">用户</th>
-              <th className="px-3 py-2 text-right font-medium">成交额</th>
-              <th className="px-3 py-2 text-left font-medium">教练</th>
-              <th className="px-3 py-2 text-left font-medium">团长</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="px-3 py-6 text-slate-500" colSpan={5}>
-                  加载中…
-                </td>
-              </tr>
-            ) : error ? (
-              <tr>
-                <td className="px-3 py-6 text-rose-600" colSpan={5}>
-                  加载失败：{error}
-                </td>
-              </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td className="px-3 py-6 text-slate-500" colSpan={5}>
-                  暂无数据
-                </td>
-              </tr>
-            ) : (
-              orders
-                .sort(
-                  (a, b) => (Number(a.live_no) || 0) - (Number(b.live_no) || 0)
-                )
-                .map((o, idx) => (
+
+      {/* 状态 */}
+      {loading ? (
+        <div className="px-4 py-6 text-slate-500">加载中…</div>
+      ) : error ? (
+        <div className="px-4 py-6 text-rose-600">加载失败：{error}</div>
+      ) : rows.length === 0 ? (
+        <div className="px-4 py-6 text-slate-500">暂无数据</div>
+      ) : (
+        <>
+          {/* 移动端：卡片列表 */}
+          <div className="md:hidden divide-y">
+            {rows.map((r, idx) => (
+              <div key={idx} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-[11px]">
+                      第{r.live_no}场
+                    </span>
+                    <span className="text-slate-900 font-medium truncate max-w-[9rem]">
+                      {r.username}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-slate-900 font-semibold">
+                      {r.live_deal_amount.toLocaleString()}
+                      <span className="text-xs ml-1">元</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+                  <div className="truncate">
+                    教练：
+                    <span className="text-slate-800">
+                      {r.coach ? r.coach : '未分配'}
+                    </span>
+                  </div>
+                  <div className="truncate">
+                    团长：
+                    <span className="text-slate-800">
+                      {r.reviewer ? r.reviewer : '未分配'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 桌面端：表格 */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 border-b">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">场次</th>
+                  <th className="px-3 py-2 text-left font-medium">用户</th>
+                  <th className="px-3 py-2 text-right font-medium">成交额</th>
+                  <th className="px-3 py-2 text-left font-medium">教练</th>
+                  <th className="px-3 py-2 text-left font-medium">团长</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
                   <tr
                     key={idx}
                     className="border-b last:border-0 hover:bg-slate-50"
                   >
-                    <td className="px-3 py-2">第{Number(o.live_no)}场</td>
-                    <td className="px-3 py-2">{o.username}</td>
+                    <td className="px-3 py-2">第{r.live_no}场</td>
+                    <td className="px-3 py-2">{r.username}</td>
                     <td className="px-3 py-2 text-right">
-                      {Number(o.live_deal_amount).toLocaleString()}
+                      {r.live_deal_amount.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2">
-                      {o.coach ?? o.coach_id ?? '-'}
-                    </td>
-                    <td className="px-3 py-2">{o.reviewer ?? '-'}</td>
+                    <td className="px-3 py-2">{r.coach}</td>
+                    <td className="px-3 py-2">{r.reviewer}</td>
                   </tr>
-                ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,0 +1,132 @@
+---
+import Base from '@/layouts/Base.astro';
+import KpiCard from '@/components/KpiCard';
+import Chart from '@/components/Chart';
+import { api } from '@/lib/api';
+import type { Coach } from '@/lib/types';
+import CoachSessionTable from '@/components/CoachSessionTable';
+
+export async function getStaticPaths() {
+  const coaches = await api.listCoaches().catch(() => [] as Coach[]);
+  const paths: Array<{ params: { coach: string; live: string } }> = [] as any;
+  for (const l of coaches) {
+    const ov = await api.coachLiveNos(l.coach).catch(() => null) as Array<any> || [];
+    ov.forEach((s: any) => {
+      paths.push({ params: { coach: String(l.coach), live: String(s.live_no) } });
+    });
+  }
+  return paths;
+}
+
+const { coach, live } = Astro.params;
+
+// 统一兼容 sessions / live_list 两种字段
+const sessions = (await api.coachSessions(String(coach)).catch(() => null)) as any;
+const ov = await api.coachLiveNos(coach).catch(() => null) as Array<any> || [];
+const no = Number(live);
+
+const idx = sessions.findIndex((s) => Number(s.live_no) === no);
+const s = idx >= 0 ? sessions[idx] : null;
+const prev = idx > 0 ? sessions[idx - 1].live_no : null;
+const next = idx >= 0 && idx < sessions.length - 1 ? sessions[idx + 1].live_no : null;
+
+const num = (v: any) => (typeof v === 'number' ? v : Number(v ?? 0));
+const users = s ? num(s.active_users ?? s.users ?? s.total_users) : 0;
+const gmvCurrent = s ? num(s.gmv_current ?? s.total_deals) : 0;
+const gmvHistory = s ? num(s.gmv_history ?? s.total_gmv) : 0;
+const dealUsers = s?.deal_users != null ? num(s.deal_users) : null;
+
+function sum<T>(arr: T[], pick: (t: any)=>number){ return arr.reduce((a:any,b:any)=>a+pick(b),0); }
+const totalUsers = s ? s.total_users : 0;
+const total_amount = s ? s.total_deals  : 0;
+const active_users = s ? s.active_users : 0;
+const deal_users = s ? s.deal_users : 0;
+const watch_bin_0 = s ? s.watch_bin_0 : 0;
+const watch_bin_1 = s ? s.watch_bin_1 : 0;
+const watch_bin_2 = s ? s.watch_bin_2 : 0;
+const watch_bin_3 = s ? s.watch_bin_3 : 0;
+const watch_bin_4 = s ? s.watch_bin_4 : 0;
+const watch_bin_5 = s ? s.watch_bin_5 : 0;
+
+// href 兜底 base（可选）
+const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+---
+
+<Base title="团长 · 单场统计" active="coach">
+  <div class="flex flex-wrap items-center gap-2 text-sm mb-4">
+    <a class="text-blue-600 hover:underline" href={`${base}/coach/${encodeURIComponent(String(coach))}`}>← 返回教练总览</a>
+    <span class="text-slate-400">/</span>
+    <span>第{live}场</span>
+
+    <div class="ml-auto flex items-center gap-2">
+      {prev && <a class="px-2 py-1 rounded border" href={`${base}/coach/${encodeURIComponent(String(coach))}/${prev}`}>上一场</a>}
+      {next && <a class="px-2 py-1 rounded border" href={`${base}/coach/${encodeURIComponent(String(coach))}/${next}`}>下一场</a>}
+      <select
+        class="border rounded-xl px-2 py-1 bg-white"
+        onchange={`location.href='${base}/coach/${encodeURIComponent(String(coach))}/'+this.value`}
+      >
+        {ov.map((it) => (
+          <option value={String(it.live_no)} selected={Number(it.live_no) === no}>第{it.live_no}场</option>
+        ))}
+      </select>
+    </div>
+  </div>
+
+  {s ? (
+    <>
+      <!-- 本场 KPI -->
+      <section class="mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
+          <KpiCard client:only="react" label="观看人数" value={active_users.toLocaleString()} />
+          <KpiCard client:only="react" label="成交额（本场）" value={total_amount.toLocaleString()} />
+          <KpiCard client:only="react" label="成交人数（本场）" value={deal_users.toLocaleString()} />
+          }
+        </div>
+      </section>
+
+      <!-- 本场观看分布（饼图）：优先 buckets，兜底 watch_bin_0..5 -->
+      <section class="mt-6 mb-14">
+        <h3 class="text-lg font-semibold mb-2">本场观看分布</h3>
+        {
+          (() => {
+            const pie = [
+                  { name: '未观看(0s)', value: num(watch_bin_0) },
+                  { name: '路过(1–30s)', value: num(watch_bin_1) },
+                  { name: '短暂(31–180s)', value: num(watch_bin_2) },
+                  { name: '半参与(181–600s)', value: num(watch_bin_3) },
+                  { name: '深度(601–1800s)', value: num(watch_bin_4) },
+                  { name: '核心(>1800s)', value: num(watch_bin_5) },
+                ]
+            return (
+              <Chart
+                client:only="react"
+                className="h-[300px] sm:h-[360px] md:h-[420px]"
+                option={{
+                  tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                  legend: { top: 0 },
+                  series: [
+                    {
+                      type: 'pie',
+                      radius: ['30%', '68%'],
+                      center: ['50%', '55%'],
+                      label: { formatter: '{b}\\n{d}%' },
+                      data: pie,
+                    },
+                  ],
+                }}
+              />
+            );
+          })()
+        }
+      </section>
+      
+      <!-- C. 教练概览（该团长管理的教练） -->
+<section class="mb-6">
+<h2 class="text-lg font-semibold mb-2">用户概览</h2>
+<CoachSessionTable client:only="react" coach={coach} live_no={live}/>
+</section>
+    </>
+  ) : (
+    <p class="text-slate-500">未找到该场次数据</p>
+  )
+</Base>
